@@ -1,0 +1,14 @@
+stages:
+  - topog
+topog:
+  stage: topog
+  tags:
+    - gfdl
+  timeout: 2 hours 0 minutes
+  before_script:
+    - module unload python
+    - module load python/3.6.4
+    - module load git
+  script:
+    - pwd
+    - make test

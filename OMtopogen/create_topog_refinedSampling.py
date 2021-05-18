@@ -5,6 +5,7 @@ import datetime, os, subprocess
 import imp
 import netCDF4
 import numpy as np
+import xarray as xr
 try:
     from OMtopogen import GMesh
 except:
@@ -339,20 +340,21 @@ def main(argv):
 
     source =""
     if(not no_changing_meta):
-        source =  source + scriptpath + " had git hash " + scriptgithash + scriptgitMod
-        source =  source + ". To obtain the grid generating code do: git clone  https://github.com/nikizadehgfdl/thin-wall-topography.git ; cd thin-wall-topography;  git checkout "+scriptgithash
+        source =  source + scriptpath + " had git hash " + scriptgithash + scriptgitMod 
+        source =  source + ". To obtain the grid generating code do: git clone  https://github.com/nikizadehgfdl/ocean_model_topog_generator.git ; cd ocean_model_topog_generator;  git checkout "+scriptgithash
 
     #Time it
     tic = time.perf_counter()
-    # # Open and read the topographic dataset
+    # open the gridded dataset so we grab lat lon extents
+    targ_grid =  xr.open_dataset(gridfilename)
+
     # Open a topography dataset, check that the topography is on a uniform grid.
-    topo_data = netCDF4.Dataset(url)
-
+    #topo_data = netCDF4.Dataset(url)
+    topo_data = xr.open_dataset(url).sel(lon=slice(np.min(targ_grid.x.values), np.max(targ_grid.x.values)), lat=slice(np.min(targ_grid.y.values), np.max(targ_grid.y.values)))
     # Read coordinates of topography
-    topo_lons = np.array( topo_data.variables[vx][:] )
-    topo_lats = np.array( topo_data.variables[vy][:] )
-    topo_elvs = np.array( topo_data.variables[ve][:,:] )
-
+    topo_lons = np.array( topo_data.variables[vx].values )
+    topo_lats = np.array( topo_data.variables[vy].values )
+    topo_elvs = np.array( topo_data.variables[ve].values )
     #Fix the topography to open some channels
     if(open_channels):
         #Bosporus mouth at Marmara Sea (29.03,41.04)
@@ -369,9 +371,8 @@ def main(argv):
         j1,i1=15616, 39166 #get_indices1D(topo_lons, topo_lats ,26.39, 40.14)
         topo_elvs[j1+1,i1]=topo_elvs[j1,i1]
     #Read a target grid
-    targ_grid =  netCDF4.Dataset(gridfilename)
-    targ_lon = np.array(targ_grid.variables['x'])
-    targ_lat = np.array(targ_grid.variables['y'])
+    targ_lon = targ_grid.variables['x'].values
+    targ_lat = targ_grid.variables['y'].values
     #x and y have shape (nyp,nxp). Topog does not need the last col for global grids (period in x).
     targ_lon = targ_lon[:,:-1]
     targ_lat = targ_lat[:,:-1]
